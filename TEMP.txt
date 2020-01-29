@@ -1,0 +1,110 @@
+﻿using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+
+namespace Dungeon
+{
+	public class DungeonTask
+	{
+		public static IEnumerable<MoveDirection> GetMovesByWay(IEnumerable<Point> way)
+		{
+			var prev = way.FirstOrDefault();
+			foreach (var cur in way.Skip(1))
+			{
+				int dx = cur.X - prev.X;
+				int dy = cur.Y - prev.Y;
+				if (dx != 0)
+					yield return dx > 0 ? MoveDirection.Right : MoveDirection.Left;
+				else if (dy != 0)
+					yield return dy > 0 ? MoveDirection.Down : MoveDirection.Up;
+				prev = cur;
+			}
+		}
+
+		public static MoveDirection[] FindShortestPath(Map map)
+		{
+			MoveDirection[] moves = new MoveDirection[0];
+			var movesToChest = new List<MoveDirection>();
+			var movesToExit = new List<MoveDirection>();
+
+			var dictChest = new Dictionary<Point, int>();
+			var dictExit = new Dictionary<Point, int>();
+
+			var pathsToChest = BfsTask.FindPaths(map, map.InitialPosition, map.Chests);
+
+			foreach (var way in pathsToChest)
+				dictChest.Add(way.Value, way.Count());
+			var pathsToExit = BfsTask.FindPaths(map, map.Exit, pathsToChest.Count() > 0 ? dictChest.Keys.ToArray() : new[] { map.InitialPosition });
+			if (pathsToExit == null || pathsToExit.Count() == 0)
+				return moves;
+			foreach (var way in pathsToExit)
+				dictExit.Add(way.Value, way.Count());
+
+			var bestWay = dictChest.OrderBy(w => w.Value + dictExit[w.Key]).FirstOrDefault().Key;
+
+			var pathChest = pathsToChest.FirstOrDefault(p => p.Value == bestWay);
+			var pathExit = pathsToExit.FirstOrDefault(p => p.Value == bestWay);
+
+			if (pathChest != null)
+			{
+				//pathChest.Reverse();
+				var pathChest2 = pathChest.Reverse();
+				var prev = pathChest2.FirstOrDefault();
+				foreach (var cur in pathChest2.Skip(1))
+				{
+					int dx = cur.X - prev.X;
+					int dy = cur.Y - prev.Y;
+					if (dx != 0)
+						movesToChest.Add(dx > 0 ? MoveDirection.Right : MoveDirection.Left);
+					else if (dy != 0)
+						movesToChest.Add(dy > 0 ? MoveDirection.Down : MoveDirection.Up);
+					prev = cur;
+				}
+			}
+			
+			//while (pathChest != null && pathChest.Previous != null)
+			//{
+			//	int dx = pathChest.Value.X - pathChest.Previous.Value.X;
+			//	int dy = pathChest.Value.Y - pathChest.Previous.Value.Y;
+			//	if (dx != 0)
+			//		movesToChest.Add(dx > 0 ? MoveDirection.Right : MoveDirection.Left);
+			//	else if (dy != 0)
+			//		movesToChest.Add(dy > 0 ? MoveDirection.Down : MoveDirection.Up);
+			//	pathChest = pathChest.Previous;
+			//}
+
+			//movesToChest.Reverse();
+
+			if (pathExit != null)
+			{
+				var prev = pathExit.FirstOrDefault();
+				foreach (var cur in pathExit.Skip(1))
+				{
+					int dx = cur.X - prev.X;
+					int dy = cur.Y - prev.Y;
+					if (dx != 0)
+						movesToChest.Add(dx > 0 ? MoveDirection.Right : MoveDirection.Left);
+					else if (dy != 0)
+						movesToChest.Add(dy > 0 ? MoveDirection.Down : MoveDirection.Up);
+					prev = cur;
+				}
+			}
+
+			//while (pathExit.Previous != null)
+			//{
+			//	int dx = pathExit.Value.X - pathExit.Previous.Value.X;
+			//	int dy = pathExit.Value.Y - pathExit.Previous.Value.Y;
+			//	if (dx != 0)
+			//		movesToExit.Add(dx < 0 ? MoveDirection.Right : MoveDirection.Left);
+			//	else if (dy != 0)
+			//		movesToExit.Add(dy < 0 ? MoveDirection.Down : MoveDirection.Up);
+			//	pathExit = pathExit.Previous;
+			//}
+
+			//moves2.Reverse();
+			moves = movesToChest.Concat(movesToExit).ToArray();
+
+			return moves;
+		}
+	}
+}
